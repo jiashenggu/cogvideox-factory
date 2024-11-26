@@ -452,7 +452,7 @@ def main(args):
                     model = unwrap_model(accelerator, model)
                     transformer_lora_layers_to_save = get_peft_model_state_dict(model)
                 else:
-                    raise ValueError(f"unexpected save model: {model.__class__}")
+                    raise ValueError(f"Unexpected save model: {model.__class__}")
 
                 # make sure to pop weight so that corresponding model is not saved again
                 if weights:
@@ -799,12 +799,15 @@ def main(args):
                 # (this is the forward diffusion process)
                 noisy_video_latents = scheduler.add_noise(video_latents, noise, timesteps)
                 noisy_model_input = torch.cat([noisy_video_latents, image_latents], dim=2)
-
+                model_config.patch_size_t if hasattr(model_config, "patch_size_t") else None,
+                ofs_embed_dim = model_config.ofs_embed_dim if hasattr(model_config, "ofs_embed_dim") else None,
+                ofs_emb = None if ofs_embed_dim is None else noisy_model_input.new_full((1,), fill_value=2.0)
                 # Predict the noise residual
                 model_output = transformer(
                     hidden_states=noisy_model_input,
                     encoder_hidden_states=prompt_embeds,
                     timestep=timesteps,
+                    ofs=ofs_emb,
                     image_rotary_emb=image_rotary_emb,
                     return_dict=False,
                 )[0]
@@ -878,7 +881,7 @@ def main(args):
             last_lr = lr_scheduler.get_last_lr()[0] if lr_scheduler is not None else args.learning_rate
             logs = {"loss": loss.detach().item(), "lr": last_lr}
             # gradnorm + deepspeed: https://github.com/microsoft/DeepSpeed/issues/4555
-            if accelerator.distributed_type != DistributedType.DEEPSPEED:
+            if accelerator.sync_gradients and accelerator.distributed_type != DistributedType.DEEPSPEED:
                 logs.update(
                     {
                         "gradient_norm_before_clip": gradient_norm_before_clip,
