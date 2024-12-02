@@ -799,7 +799,7 @@ def main(args):
                 # (this is the forward diffusion process)
                 noisy_video_latents = scheduler.add_noise(video_latents, noise, timesteps)
                 noisy_model_input = torch.cat([noisy_video_latents, image_latents], dim=2)
-                model_config.patch_size_t if hasattr(model_config, "patch_size_t") else None,
+
                 ofs_embed_dim = model_config.ofs_embed_dim if hasattr(model_config, "ofs_embed_dim") else None,
                 ofs_emb = None if ofs_embed_dim is None else noisy_model_input.new_full((1,), fill_value=2.0)
                 # Predict the noise residual
